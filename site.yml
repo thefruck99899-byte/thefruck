@@ -1,0 +1,6 @@
+- name: Test Semaphore + Ansible
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ping target
+      ping:
