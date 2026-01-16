@@ -1,5 +1,4 @@
 .ssh/
+project_*/
 repos/
-project_1/
-inventory/1
 *.retry
