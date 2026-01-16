@@ -1,0 +1,5 @@
+.ssh/
+repos/
+project_1/
+inventory/1
+*.retry
