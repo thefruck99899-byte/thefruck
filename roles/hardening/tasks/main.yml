@@ -113,4 +113,3 @@
     line: 'Banner /etc/issue.net'
     create: yes
   notify: Restart sshd
-
