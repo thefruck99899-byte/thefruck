@@ -10,7 +10,7 @@
     line: 'PermitRootLogin no'
     state: present
     backup: yes
-  notify: Restart sshd
+  notify: restart sshd
 
 - name: Force SSH Protocol 2
   lineinfile:
@@ -19,7 +19,7 @@
     line: 'Protocol 2'
     state: present
     backup: yes
-  notify: Restart sshd
+  notify: restart sshd
 
 - name: Set SSH banner file
   copy:
@@ -37,7 +37,7 @@
     line: 'Banner /etc/issue.net'
     state: present
     backup: yes
-  notify: Restart sshd
+  notify: restart sshd
 
 # =========================
 # PASSWORD POLICY
