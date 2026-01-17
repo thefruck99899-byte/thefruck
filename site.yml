@@ -1,6 +1,6 @@
-- name: Test Semaphore + Ansible
+- name: CIS Hardening
   hosts: all
   become: yes
-  tasks:
-    - name: Ping target
-      ping:
+  roles:
+    - hardening
+
