@@ -1,6 +1,6 @@
 ---
 # =========================
-# SSH HARDENING
+# SSH Hardening
 # =========================
 
 - name: Disable root login via SSH
@@ -9,8 +9,7 @@
     regexp: '^#?PermitRootLogin'
     line: 'PermitRootLogin no'
     state: present
-    backup: yes
-  notify: restart sshd
+  notify: Restart sshd
 
 - name: Force SSH Protocol 2
   lineinfile:
@@ -18,8 +17,7 @@
     regexp: '^#?Protocol'
     line: 'Protocol 2'
     state: present
-    backup: yes
-  notify: restart sshd
+  notify: Restart sshd
 
 - name: Set SSH banner file
   copy:
@@ -36,11 +34,10 @@
     regexp: '^#?Banner'
     line: 'Banner /etc/issue.net'
     state: present
-    backup: yes
-  notify: restart sshd
+  notify: Restart sshd
 
 # =========================
-# PASSWORD POLICY
+# Password Policy
 # =========================
 
 - name: Set minimum password length
@@ -49,7 +46,6 @@
     regexp: '^#?minlen'
     line: 'minlen = 12'
     state: present
-    backup: yes
 
 - name: Set password expiry to 90 days
   lineinfile:
@@ -57,10 +53,9 @@
     regexp: '^PASS_MAX_DAYS'
     line: 'PASS_MAX_DAYS   90'
     state: present
-    backup: yes
 
 # =========================
-# SESSION TIMEOUT
+# Shell Idle Timeout
 # =========================
 
 - name: Set shell idle timeout
@@ -69,17 +64,15 @@
     regexp: '^TMOUT='
     line: 'TMOUT=900'
     state: present
-    backup: yes
 
 - name: Export TMOUT
   lineinfile:
     path: /etc/profile
-    regexp: '^export TMOUT'
     line: 'export TMOUT'
     state: present
 
 # =========================
-# FIREWALL & SELINUX
+# Firewall
 # =========================
 
 - name: Enable and start firewalld
@@ -95,40 +88,28 @@
     state: enabled
     immediate: yes
 
+# =========================
+# SELinux
+# =========================
+
 - name: Enable SELinux enforcing
   selinux:
     policy: targeted
     state: enforcing
 
 # =========================
-# DISABLE UNUSED SERVICES (SAFE MODE)
+# Disable unnecessary services (log clean)
 # =========================
 
-- name: Stop and disable avahi-daemon if exists
+- name: Stop and disable unnecessary services if exist
   service:
-    name: avahi-daemon
+    name: "{{ item }}"
     state: stopped
     enabled: no
-  ignore_errors: yes
-
-- name: Stop and disable cups if exists
-  service:
-    name: cups
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: Stop and disable telnet if exists
-  service:
-    name: telnet
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: Stop and disable ftp if exists
-  service:
-    name: vsftpd
-    state: stopped
-    enabled: no
-  ignore_errors: yes
+  loop:
+    - avahi-daemon
+    - cups
+    - telnet
+    - vsftpd
+  failed_when: false
 
