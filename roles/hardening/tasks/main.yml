@@ -1,0 +1,105 @@
+---
+# =========================
+# SSH HARDENING
+# =========================
+- name: Disable root login via SSH
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+  notify: restart ssh
+
+- name: Force SSH Protocol 2
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Protocol'
+    line: 'Protocol 2'
+  notify: restart ssh
+
+# =========================
+# PASSWORD POLICY
+# =========================
+- name: Set minimum password length
+  lineinfile:
+    path: /etc/security/pwquality.conf
+    regexp: '^#?minlen'
+    line: 'minlen = 8'
+
+- name: Set password expiry to 90 days
+  lineinfile:
+    path: /etc/login.defs
+    regexp: '^PASS_MAX_DAYS'
+    line: 'PASS_MAX_DAYS   90'
+
+# =========================
+# IDLE TIMEOUT
+# =========================
+- name: Set shell idle timeout
+  lineinfile:
+    path: /etc/profile
+    line: 'TMOUT=600'
+    create: yes
+
+- name: Export TMOUT
+  lineinfile:
+    path: /etc/profile
+    line: 'export TMOUT'
+    create: yes
+
+# =========================
+# FIREWALL
+# =========================
+- name: Enable and start firewalld
+  systemd:
+    name: firewalld
+    enabled: true
+    state: started
+
+- name: Allow SSH only
+  firewalld:
+    service: ssh
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+# =========================
+# SELINUX
+# =========================
+- name: Enable SELinux enforcing
+  selinux:
+    policy: targeted
+    state: enforcing
+
+# =========================
+# DISABLE UNUSED SERVICES
+# =========================
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop:
+    - avahi-daemon
+    - cups
+    - telnet
+    - ftp
+  ignore_errors: yes
+
+# =========================
+# LOGIN BANNER
+# =========================
+- name: Copy legal login banner
+  copy:
+    src: issue.net
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable SSH banner
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Banner'
+    line: 'Banner /etc/issue.net'
+  notify: restart ssh
+
