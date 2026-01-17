@@ -1,12 +1,15 @@
 ---
-# CIS Hardening - Basic (Safe for RHEL 8)
+# =========================
+# SSH HARDENING
+# =========================
 
 - name: Disable root login via SSH
   lineinfile:
     path: /etc/ssh/sshd_config
     regexp: '^#?PermitRootLogin'
     line: 'PermitRootLogin no'
-    create: yes
+    state: present
+    backup: yes
   notify: Restart sshd
 
 - name: Force SSH Protocol 2
@@ -14,35 +17,70 @@
     path: /etc/ssh/sshd_config
     regexp: '^#?Protocol'
     line: 'Protocol 2'
-    create: yes
+    state: present
+    backup: yes
   notify: Restart sshd
+
+- name: Set SSH banner file
+  copy:
+    src: issue.net
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart sshd
+
+- name: Enable SSH banner
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Banner'
+    line: 'Banner /etc/issue.net'
+    state: present
+    backup: yes
+  notify: Restart sshd
+
+# =========================
+# PASSWORD POLICY
+# =========================
 
 - name: Set minimum password length
   lineinfile:
     path: /etc/security/pwquality.conf
     regexp: '^#?minlen'
     line: 'minlen = 12'
-    create: yes
+    state: present
+    backup: yes
 
 - name: Set password expiry to 90 days
   lineinfile:
     path: /etc/login.defs
     regexp: '^PASS_MAX_DAYS'
     line: 'PASS_MAX_DAYS   90'
-    create: yes
+    state: present
+    backup: yes
+
+# =========================
+# SESSION TIMEOUT
+# =========================
 
 - name: Set shell idle timeout
   lineinfile:
     path: /etc/profile
     regexp: '^TMOUT='
     line: 'TMOUT=900'
-    create: yes
+    state: present
+    backup: yes
 
 - name: Export TMOUT
   lineinfile:
     path: /etc/profile
+    regexp: '^export TMOUT'
     line: 'export TMOUT'
-    insertafter: '^TMOUT='
+    state: present
+
+# =========================
+# FIREWALL & SELINUX
+# =========================
 
 - name: Enable and start firewalld
   service:
@@ -50,7 +88,7 @@
     state: started
     enabled: yes
 
-- name: Allow SSH only
+- name: Allow SSH service only
   firewalld:
     service: ssh
     permanent: yes
@@ -63,7 +101,7 @@
     state: enforcing
 
 # =========================
-# Disable unnecessary services (SAFE MODE)
+# DISABLE UNUSED SERVICES (SAFE MODE)
 # =========================
 
 - name: Stop and disable avahi-daemon if exists
@@ -89,27 +127,8 @@
 
 - name: Stop and disable ftp if exists
   service:
-    name: ftp
+    name: vsftpd
     state: stopped
     enabled: no
   ignore_errors: yes
 
-# =========================
-# Legal Banner
-# =========================
-
-- name: Copy legal login banner
-  copy:
-    src: issue.net
-    dest: /etc/issue.net
-    owner: root
-    group: root
-    mode: '0644'
-
-- name: Configure SSH banner
-  lineinfile:
-    path: /etc/ssh/sshd_config
-    regexp: '^#?Banner'
-    line: 'Banner /etc/issue.net'
-    create: yes
-  notify: Restart sshd
