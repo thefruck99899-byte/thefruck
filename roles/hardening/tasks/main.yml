@@ -1,0 +1,116 @@
+---
+# CIS Hardening - Basic (Safe for RHEL 8)
+
+- name: Disable root login via SSH
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+    create: yes
+  notify: Restart sshd
+
+- name: Force SSH Protocol 2
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Protocol'
+    line: 'Protocol 2'
+    create: yes
+  notify: Restart sshd
+
+- name: Set minimum password length
+  lineinfile:
+    path: /etc/security/pwquality.conf
+    regexp: '^#?minlen'
+    line: 'minlen = 12'
+    create: yes
+
+- name: Set password expiry to 90 days
+  lineinfile:
+    path: /etc/login.defs
+    regexp: '^PASS_MAX_DAYS'
+    line: 'PASS_MAX_DAYS   90'
+    create: yes
+
+- name: Set shell idle timeout
+  lineinfile:
+    path: /etc/profile
+    regexp: '^TMOUT='
+    line: 'TMOUT=900'
+    create: yes
+
+- name: Export TMOUT
+  lineinfile:
+    path: /etc/profile
+    line: 'export TMOUT'
+    insertafter: '^TMOUT='
+
+- name: Enable and start firewalld
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Allow SSH only
+  firewalld:
+    service: ssh
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: Enable SELinux enforcing
+  selinux:
+    policy: targeted
+    state: enforcing
+
+# =========================
+# Disable unnecessary services (SAFE MODE)
+# =========================
+
+- name: Stop and disable avahi-daemon if exists
+  service:
+    name: avahi-daemon
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+- name: Stop and disable cups if exists
+  service:
+    name: cups
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+- name: Stop and disable telnet if exists
+  service:
+    name: telnet
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+- name: Stop and disable ftp if exists
+  service:
+    name: ftp
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+# =========================
+# Legal Banner
+# =========================
+
+- name: Copy legal login banner
+  copy:
+    src: issue.net
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Configure SSH banner
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Banner'
+    line: 'Banner /etc/issue.net'
+    create: yes
+  notify: Restart sshd
+
