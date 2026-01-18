@@ -3,11 +3,11 @@
 # SSH Hardening
 # =========================
 
-- name: Disable root password login (allow key only)
+- name: Disable root login via SSH
   lineinfile:
     path: /etc/ssh/sshd_config
     regexp: '^#?PermitRootLogin'
-    line: 'PermitRootLogin prohibit-password'
+    line: 'PermitRootLogin no'
     state: present
   notify: Restart sshd
 
@@ -19,6 +19,15 @@
     state: present
   notify: Restart sshd
 
+- name: Set SSH banner file
+  copy:
+    src: issue.net
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart sshd
+
 - name: Enable SSH banner
   lineinfile:
     path: /etc/ssh/sshd_config
@@ -26,14 +35,6 @@
     line: 'Banner /etc/issue.net'
     state: present
   notify: Restart sshd
-
-- name: Deploy SSH banner
-  copy:
-    src: issue.net
-    dest: /etc/issue.net
-    owner: root
-    group: root
-    mode: '0644'
 
 # =========================
 # Password Policy
@@ -50,8 +51,9 @@
     regexp: '^#?\s*minlen\s*='
     line: 'minlen = 8'
     create: yes
+    backrefs: yes
 
-- name: Enforce pwquality for root
+- name: Enforce password policy for root
   lineinfile:
     path: /etc/security/pwquality.conf
     regexp: '^#?\s*enforce_for_root'
@@ -59,29 +61,28 @@
     insertafter: EOF
     create: yes
 
-- name: Ensure pam_pwquality enabled (authselect)
-  command: authselect enable-feature with-pwquality
-  register: authselect_pwq
-  failed_when: false
-  changed_when: "'enabled' in authselect_pwq.stdout"
+- name: Ensure pam_pwquality is enforced in system-auth
+  lineinfile:
+    path: /etc/pam.d/system-auth
+    regexp: '^password\s+requisite\s+pam_pwquality.so'
+    line: 'password    requisite     pam_pwquality.so try_first_pass local_users_only retry=3 enforce_for_root'
+    state: present
+    backrefs: yes
 
-- name: Apply authselect changes
-  command: authselect apply-changes
-  when: authselect_pwq is changed
+- name: Ensure pam_pwquality is enforced in password-auth
+  lineinfile:
+    path: /etc/pam.d/password-auth
+    regexp: '^password\s+requisite\s+pam_pwquality.so'
+    line: 'password    requisite     pam_pwquality.so try_first_pass local_users_only retry=3 enforce_for_root'
+    state: present
+    backrefs: yes
 
-- name: Set password expiry default to 90 days
+- name: Set password expiry to 90 days
   lineinfile:
     path: /etc/login.defs
     regexp: '^PASS_MAX_DAYS'
     line: 'PASS_MAX_DAYS   90'
     state: present
-
-- name: Enforce password expiry to 90 days for existing human users
-  ansible.builtin.shell: |
-    getent passwd | awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' | while read u; do
-      chage --maxdays 90 "$u"
-    done
-  changed_when: false
 
 # =========================
 # Shell Idle Timeout
@@ -98,17 +99,11 @@
   lineinfile:
     path: /etc/profile
     line: 'export TMOUT'
-    insertafter: '^TMOUT='
     state: present
 
 # =========================
 # Firewall
 # =========================
-
-- name: Ensure firewalld package is installed
-  package:
-    name: firewalld
-    state: present
 
 - name: Enable and start firewalld
   service:
@@ -127,16 +122,16 @@
 # SELinux
 # =========================
 
-- name: Ensure SELinux is enforcing
+- name: Enable SELinux enforcing
   selinux:
     policy: targeted
     state: enforcing
 
 # =========================
-# Disable unnecessary services
+# Disable unnecessary services (log clean)
 # =========================
 
-- name: Stop and disable unnecessary services if present
+- name: Stop and disable unnecessary services if exist
   service:
     name: "{{ item }}"
     state: stopped
