@@ -1,24 +1,18 @@
 ---
-- name: Stop Services, Subscribe, Update, and Reboot
+- name: Stop Services, Subscribe, Update (Skip Jenkins), and Reboot
   hosts: all
   become: true
   vars:
-    # ---------------------------------------------------------
-    # กรุณาใส่ Username/Password ของ Red Hat ที่นี่
-    # ---------------------------------------------------------
     rh_username: "d.auttapol@gmail.com"
     rh_password: "B@dboy989"
 
   tasks:
-    # =======================================================
-    # ส่วนที่ 1: ตรวจสอบและหยุด Service (Smart Stop)
-    # =======================================================
-    
-    # 1.1 เก็บข้อมูล Service ทั้งหมดในเครื่องมาก่อน
+    # -------------------------------------------------------
+    # 1. Stop Services & Java (Smart Stop)
+    # -------------------------------------------------------
     - name: Populate service facts
       ansible.builtin.service_facts:
 
-    # 1.2 จัดการ Apache (httpd) - เช็คก่อนว่ามีไหม ถ้ามีและรันอยู่ค่อยสั่งหยุด
     - name: Stop Apache HTTPD (if running)
       ansible.builtin.service:
         name: httpd
@@ -26,23 +20,20 @@
       when: 
         - "'httpd.service' in ansible_facts.services"
         - "ansible_facts.services['httpd.service'].state == 'running'"
-      register: httpd_stop_result
 
-    # 1.3 จัดการ Java - เช็ค Process ID
     - name: Check if any Java process is running
       ansible.builtin.shell: pgrep java
       register: java_check
       ignore_errors: yes
       changed_when: false
 
-    # 1.4 สั่ง Kill Java - ถ้าเจอ Process (rc=0)
     - name: Kill Java process (if found)
       ansible.builtin.shell: pkill java
       when: java_check.rc == 0
 
-    # =======================================================
-    # ส่วนที่ 2: RHEL Subscription
-    # =======================================================
+    # -------------------------------------------------------
+    # 2. RHEL Subscription
+    # -------------------------------------------------------
     - name: Register and auto-attach RHEL subscription
       redhat_subscription:
         state: present
@@ -50,32 +41,29 @@
         password: "{{ rh_password }}"
         auto_attach: true
 
-    # =======================================================
-    # ส่วนที่ 3: เตรียมเครื่องมือและอัปเดต (Update)
-    # =======================================================
-    
-    # 3.1 ลง dnf-utils ก่อน (แก้ Error: needs-restarting not found)
+    # -------------------------------------------------------
+    # 3. Update Patch (Excluding Jenkins)
+    # -------------------------------------------------------
     - name: Install dnf-utils (Prerequisite for reboot check)
       ansible.builtin.dnf:
         name: dnf-utils
         state: present
 
-    # 3.2 สั่งอัปเดตแพตช์ทั้งหมด
-    - name: Upgrade all packages to the latest version
+    - name: Upgrade all packages (Skip Jenkins to avoid GPG Error)
       ansible.builtin.dnf:
         name: "*"           
-        state: latest       
+        state: latest
+        exclude: jenkins* # <--- สั่งข้าม Jenkins ไปเลย ตัวอื่นจะได้ไม่อัปเดตได้
       register: dnf_output
 
-    # 3.3 โชว์ Log รายการที่อัปเดต (ตามที่ขอ)
     - name: Show updated packages list
       ansible.builtin.debug:
         var: dnf_output.results
       when: dnf_output.changed
 
-    # =======================================================
-    # ส่วนที่ 4: ตรวจสอบและรีบูต (Reboot Logic)
-    # =======================================================
+    # -------------------------------------------------------
+    # 4. Reboot Logic
+    # -------------------------------------------------------
     - name: Check if reboot is required
       ansible.builtin.command: needs-restarting -r
       register: reboot_required
@@ -85,7 +73,7 @@
 
     - name: Reboot if required
       ansible.builtin.reboot:
-        msg: "Rebooting system after Maintenance (Updates applied)"
+        msg: "Rebooting system after Maintenance"
         connect_timeout: 5
         reboot_timeout: 600   
         pre_reboot_delay: 0
