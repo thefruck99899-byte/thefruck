@@ -3,8 +3,8 @@
   hosts: all
   become: true
   vars:
-    rh_username: "YOUR_USERNAME"
-    rh_password: "YOUR_PASSWORD"
+    rh_username: "d.auttapol@gmail.com"
+    rh_password: "B@dboy989"
 
   tasks:
     # -------------------------------------------------------
