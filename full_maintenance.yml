@@ -3,12 +3,12 @@
   hosts: all
   become: true
   vars:
-    rh_username: "d.auttapol@gmail.com"
-    rh_password: "B@dboy989"
+    rh_username: "YOUR_USERNAME"
+    rh_password: "YOUR_PASSWORD"
 
   tasks:
     # -------------------------------------------------------
-    # 1. Stop Services & Java (Smart Stop)
+    # 1. Stop Services & Java
     # -------------------------------------------------------
     - name: Populate service facts
       ansible.builtin.service_facts:
@@ -56,15 +56,15 @@
         exclude: jenkins*
       register: dnf_output
 
-    # [จุดที่แก้ไข] รวม Log เป็นก้อนเดียวต่อ 1 เครื่อง (อ่านง่าย ไม่ปนกัน)
+    # [จุดที่แก้ไข] ใช้เครื่องหมาย | เพื่อบังคับโชว์เป็นข้อความยาวๆ
     - name: Show updated packages list
       ansible.builtin.debug:
-        msg: 
-          - "=========================================="
-          - "  UPDATE SUMMARY FOR: {{ inventory_hostname }}"
-          - "=========================================="
-          - "{{ dnf_output.results | join('\n') }}"
-          - "=========================================="
+        msg: |
+          =======================================================
+          UPDATE SUMMARY FOR HOST: {{ inventory_hostname }}
+          =======================================================
+          {{ dnf_output.results | join('\n') }}
+          =======================================================
       when: dnf_output.changed
 
     # -------------------------------------------------------
